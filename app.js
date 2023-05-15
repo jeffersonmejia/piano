@@ -6,9 +6,12 @@ let keyCounter = INITIAL_COUNTER
 let scaleCounter = 0
 let isPlaying = false
 let currentKeyPressed
-let currentKey
+let currentKeys = {} // Objeto para almacenar las teclas actualmente presionadas
 const audio = {}
 let lastPlayed
+const config = {
+	showKeyLabel: false,
+}
 
 function fillKeys() {
 	$keys.forEach((key, index) => {
@@ -24,10 +27,12 @@ function fillKeys() {
 
 		$noteName.classList.add('key-label')
 		key.dataset.note += keyCounter
-		$noteName.textContent = key.dataset.note
-		$keyName.innerHTML = `<br/>(${key.dataset.key})`
-		$noteName.appendChild($keyName)
-		key.appendChild($noteName)
+		if (config.showKeyLabel) {
+			$noteName.textContent = key.dataset.note
+			$keyName.innerHTML = `<br/>(${key.dataset.key})`
+			$noteName.appendChild($keyName)
+			key.appendChild($noteName)
+		}
 		let note = key.dataset.note.toLowerCase()
 		if (note.includes('#')) note = note.replace(/#/g, 's')
 		audio[key.dataset.note] = new Audio(`sounds/octaves/${note}.mp3`)
@@ -35,17 +40,14 @@ function fillKeys() {
 	})
 }
 
-function playNote(pressedKey) {
-	if (!pressedKey) return
-	if (lastPlayed) {
-		if (!lastPlayed.paused) {
-			lastPlayed.pause()
-		}
-	}
-	audio[pressedKey].currentTime = 0
-	audio[pressedKey].play()
-	lastPlayed = audio[pressedKey]
+function playNote() {
+	// Reproducir todas las notas de las teclas presionadas
+	Object.keys(currentKeys).forEach((key) => {
+		audio[currentKeys[key]].currentTime = 0
+		audio[currentKeys[key]].play()
+	})
 }
+
 function fadeOut(audioObject, duration) {
 	const interval = 10
 	const reductionAmount = audioObject.volume / (duration / interval)
@@ -61,30 +63,33 @@ function fadeOut(audioObject, duration) {
 	}, interval)
 }
 
-// Utiliza la función fadeOut después de llamar a playNote()
-
 d.addEventListener('DOMContentLoaded', (e) => fillKeys())
 
 d.addEventListener('keydown', (e) => {
 	const set = Array.from($keys)
 	const filter = set.filter((el) => el.dataset.key === e.key)
-	currentKey = filter?.length > 0 && filter[0]
-	if (currentKey) {
-		const isWhite = currentKey.classList.contains('white-key')
-		if (isWhite) currentKey.classList.add('white-key-active')
-		else currentKey.classList.add('black-key-active')
-		currentKeyPressed = e.key
+	currentKeys = filter?.length > 0 && filter[0]
+	if (currentKeys) {
+		const isWhite = currentKeys.classList.contains('white-key')
+		if (isWhite) currentKeys.classList.add('white-key-active')
+		else currentKeys.classList.add('black-key-active')
+		currentKeys[e.key] = currentKeys.dataset.note // Agregar la tecla actual al objeto de teclas presionadas
 		lastPlayed?.pause()
-		playNote(currentKey.dataset.note)
-		fadeOut(audio[pressedKey], 1000) // 1000 representa el tiempo en milisegundos que tardará el desvanecimiento.
+		playNote()
+		fadeOut(audio[currentKey.dataset.note], 1000) // 1000 representa el tiempo en milisegundos que tardará el desvanecimiento.
 	}
 })
 
 d.addEventListener('keyup', (e) => {
-	if (e.key !== currentKeyPressed) return
-	if (currentKeyPressed) {
-		const isWhite = currentKey.classList.contains('white-key')
-		if (isWhite) currentKey.classList.remove('white-key-active')
-		else currentKey.classList.remove('black-key-active')
+	const set = Array.from($keys)
+	const filter = set.filter((el) => el.dataset.key === e.key)
+	currentKeys = filter?.length > 0 && filter[0]
+	if (currentKeys) {
+		const isWhite = currentKeys.classList.contains('white-key')
+		if (isWhite) currentKeys.classList.remove('white-key-active')
+		else currentKeys.classList.remove('black-key-active')
+		currentKeyPressed = currentKeyPressed.filter(
+			(note) => note !== currentKeys.dataset.note
+		)
 	}
 })
